@@ -33,6 +33,9 @@ class PSUControl(octoprint.plugin.StartupPlugin,
         self.offGCodeCommand = ''
         self.onSysCommand = ''
         self.offSysCommand = ''
+        self.enablePseudoOnOff = False
+        self.pseudoOnGCodeCommand = ''
+        self.pseudoOffGCodeCommand = ''
         self.postOnDelay = 0.0
         self.autoOn = False
         self.autoOnTriggerGCodeCommands = ''
@@ -78,6 +81,19 @@ class PSUControl(octoprint.plugin.StartupPlugin,
 
         self.offSysCommand = self._settings.get(["offSysCommand"])
         self._logger.debug("offSysCommand: %s" % self.offSysCommand)
+
+        self.enablePseudoOnOff = self._settings.get_boolean(["enablePseudoOnOff"])
+        self._logger.debug("enablePseudoOnOff: %s" % self.enablePseudoOnOff)
+
+        if self.enablePseudoOnOff and self.switchingMethod == 'GCODE':
+            self._logger.warning("Pseudo On/Off cannot be used in conjunction with GCODE switching.")
+            self.enablePseudoOnOff = False
+
+        self.pseudoOnGCodeCommand = self._settings.get(["pseudoOnGCodeCommand"])
+        self._logger.debug("pseudoOnGCodeCommand: %s" % self.pseudoOnGCodeCommand)
+
+        self.pseudoOffGCodeCommand = self._settings.get(["pseudoOffGCodeCommand"])
+        self._logger.debug("pseudoOffGCodeCommand: %s" % self.pseudoOffGCodeCommand)
 
         self.postOnDelay = self._settings.get_float(["postOnDelay"])
         self._logger.debug("postOnDelay: %s" % self.postOnDelay)
@@ -295,6 +311,14 @@ class PSUControl(octoprint.plugin.StartupPlugin,
 
     def hook_gcode_queuing(self, comm_instance, phase, cmd, cmd_type, gcode, *args, **kwargs):
         if gcode:
+            if self.enablePseudoOnOff:
+                if gcode == self.pseudoOnGCodeCommand:
+                    #log some sort of m80 command and skip sending command to printer.
+                    self.turn_psu_on()
+                elif gcode == self.pseudoOffGCodeCommand:
+                    #log some sort of m81 command and skip sending command to printer.
+                    self.turn_psu_off()
+
             if (not self.isPSUOn and self.autoOn and (gcode in self._autoOnTriggerGCodeCommandsArray)):
                 self._logger.info("Auto-On - Turning PSU On (Triggered by %s)" % gcode)
                 self.turn_psu_on()
@@ -388,6 +412,9 @@ class PSUControl(octoprint.plugin.StartupPlugin,
             offGCodeCommand = 'M81', 
             onSysCommand = '',
             offSysCommand = '',
+            enablePseudoOnOff = False,
+            pseudoOnGCodeCommand = 'M80',
+            pseudoOffGCodeCommand = 'M81',
             postOnDelay = 0.0,
             enableSensing = False,
             disconnectOnPowerOff = False,
