@@ -385,7 +385,7 @@ class PSUControl(octoprint.plugin.StartupPlugin,
             else:
                 self.turn_psu_on()
         elif command == 'getPSUState':
-            return jsonify(isPSUOn=self.isPSUon)
+            return jsonify(isPSUOn=int(self.isPSUon))
 
     def get_settings_defaults(self):
         return dict(
